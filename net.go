@@ -2,7 +2,6 @@ package net
 
 import (
 	"context"
-	"fmt"
 	"io"
 
 	"github.com/rtctunnel/crypt"
@@ -10,7 +9,7 @@ import (
 
 // Errors
 var (
-	ErrClosed = fmt.Errorf("closed: %w", io.EOF)
+	ErrClosed = io.EOF
 )
 
 type PacketNetwork interface {

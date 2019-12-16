@@ -2,10 +2,10 @@ package webrtc
 
 import (
 	"context"
-	"github.com/rs/zerolog/log"
+	"sync"
+
 	"github.com/rtctunnel/crypt"
 	"github.com/rtctunnel/net"
-	"sync"
 )
 
 type Network struct {
@@ -24,12 +24,22 @@ func NewNetwork(options ...Option) *Network {
 	return n
 }
 
-func (n *Network) AddRoute(remote crypt.PublicKey, port int) {
-	panic("AddRoute not implemented")
-}
-
 func (n *Network) Accept(ctx context.Context, local crypt.PrivateKey) (remote crypt.PublicKey, port int, stream net.Stream, err error) {
 	return n.getNetworkForKey(local).accept(ctx)
+}
+
+func (n *Network) Close() error {
+	var err error
+	n.mu.Lock()
+	for key, nfk := range n.networks {
+		e := nfk.Close()
+		if err == nil {
+			err = e
+		}
+		delete(n.networks, key)
+	}
+	n.mu.Unlock()
+	return err
 }
 
 func (n *Network) Open(ctx context.Context, local crypt.PrivateKey, remote crypt.PublicKey, port int) (stream net.Stream, err error) {
@@ -45,37 +55,4 @@ func (n *Network) getNetworkForKey(key crypt.PrivateKey) *networkForKey {
 	}
 	n.mu.Unlock()
 	return nfk
-}
-
-type networkForKey struct {
-	network *Network
-	key     crypt.PrivateKey
-}
-
-func newNetworkForKey(network *Network, key crypt.PrivateKey) *networkForKey {
-	nfk := &networkForKey{
-		network: network,
-		key:     key,
-	}
-	return nfk
-}
-
-func (nfk *networkForKey) handler() {
-	for {
-		remote, data, err := nfk.network.cfg.signal.Recv(context.Background(), nfk.key)
-		if err != nil {
-			log.Error().Err(err).Msg("[webrtc] received error from signal")
-			continue
-		}
-
-
-	}
-}
-
-func (nfk *networkForKey) accept(ctx context.Context) (remote crypt.PublicKey, port int, stream net.Stream, err error) {
-	panic("Accept not implemented")
-}
-
-func (nfk *networkForKey) open(ctx context.Context, remote crypt.PublicKey, port int) (stream net.Stream, err error) {
-	panic("Open not implemented")
 }
